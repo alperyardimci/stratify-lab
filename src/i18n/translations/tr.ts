@@ -51,6 +51,10 @@ export const tr: TranslationKeys = {
     selectCrypto: 'Kripto seçin...',
     cryptoMultiSelect: 'Kripto Para (birden fazla seçebilirsiniz)',
     cryptosSelected: '{count} kripto seçildi',
+    bist: 'BIST',
+    selectBist: 'BIST hissesi seçin...',
+    bistMultiSelect: 'BIST Hisseleri (birden fazla seçebilirsiniz)',
+    bistsSelected: '{count} BIST hissesi seçildi',
 
     // Investment Details
     investmentDetails: 'Yatırım Detayları',
@@ -136,6 +140,13 @@ export const tr: TranslationKeys = {
   // Crypto Picker
   cryptoPicker: {
     title: 'Kripto Para Seç',
+    selected: '{count} seçildi',
+    clearAll: 'Temizle',
+  },
+
+  // BIST Picker
+  bistPicker: {
+    title: 'BIST Hissesi Seç',
     selected: '{count} seçildi',
     clearAll: 'Temizle',
   },

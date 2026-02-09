@@ -1,8 +1,36 @@
 import { API_CONFIG } from '../../constants/api';
 import { PriceData, StockQuote } from '../../types';
 import { sanitizeSymbol, sanitizeSearchQuery } from '../../utils/validation';
+import { getUSStockHistoryYahoo, getUSStockQuoteYahoo } from './yahooFinance';
 
 const { BASE_URL, API_KEY } = API_CONFIG.ALPHA_VANTAGE;
+
+// --- Response Cache ---
+const responseCache: Map<string, { data: any; timestamp: number }> = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_SIZE = 100;
+
+const getCached = <T>(key: string): T | null => {
+  const entry = responseCache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    responseCache.delete(key);
+    responseCache.set(key, entry);
+    return entry.data as T;
+  }
+  responseCache.delete(key);
+  return null;
+};
+
+const setCache = (key: string, data: any) => {
+  responseCache.delete(key);
+  responseCache.set(key, { data, timestamp: Date.now() });
+
+  while (responseCache.size > CACHE_MAX_SIZE) {
+    const oldest = responseCache.keys().next().value;
+    if (oldest) responseCache.delete(oldest);
+    else break;
+  }
+};
 
 // Fetch with timeout to prevent hanging requests
 const fetchWithTimeout = async (url: string, timeout = 10000): Promise<Response> => {
@@ -17,15 +45,11 @@ const fetchWithTimeout = async (url: string, timeout = 10000): Promise<Response>
   }
 };
 
-// Get real-time stock quote
-export const getStockQuote = async (symbol: string): Promise<StockQuote> => {
-  const cleanSymbol = sanitizeSymbol(symbol);
-  if (!cleanSymbol) {
-    throw new Error('Invalid symbol');
-  }
+// --- Alpha Vantage (fallback) ---
 
+const getStockQuoteAlphaVantage = async (symbol: string): Promise<StockQuote> => {
   const response = await fetchWithTimeout(
-    `${BASE_URL}?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(cleanSymbol)}&apikey=${API_KEY}`
+    `${BASE_URL}?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${API_KEY}`
   );
 
   if (!response.ok) {
@@ -65,19 +89,13 @@ export const getStockQuote = async (symbol: string): Promise<StockQuote> => {
   };
 };
 
-// Get historical daily prices
-export const getStockHistory = async (
+const getStockHistoryAlphaVantage = async (
   symbol: string,
   outputSize: 'compact' | 'full' = 'compact'
 ): Promise<PriceData[]> => {
-  const cleanSymbol = sanitizeSymbol(symbol);
-  if (!cleanSymbol) {
-    throw new Error('Invalid symbol');
-  }
-
   const response = await fetchWithTimeout(
-    `${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(cleanSymbol)}&outputsize=${outputSize}&apikey=${API_KEY}`,
-    15000 // Longer timeout for full historical data
+    `${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(symbol)}&outputsize=${outputSize}&apikey=${API_KEY}`,
+    15000
   );
 
   if (!response.ok) {
@@ -119,6 +137,76 @@ export const getStockHistory = async (
   return priceData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 };
 
+const getStockHistoryRangeAlphaVantage = async (
+  symbol: string,
+  startDate: Date,
+  endDate: Date
+): Promise<PriceData[]> => {
+  const allData = await getStockHistoryAlphaVantage(symbol, 'full');
+
+  return allData.filter(item => {
+    const itemDate = new Date(item.date);
+    return itemDate >= startDate && itemDate <= endDate;
+  });
+};
+
+// --- Public API: Yahoo Finance primary, Alpha Vantage fallback ---
+
+// Get real-time stock quote
+export const getStockQuote = async (symbol: string): Promise<StockQuote> => {
+  const cleanSymbol = sanitizeSymbol(symbol);
+  if (!cleanSymbol) {
+    throw new Error('Invalid symbol');
+  }
+
+  const cacheKey = `stock_quote_${cleanSymbol}`;
+  const cached = getCached<StockQuote>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    // Try Yahoo Finance first (primary)
+    const result = await getUSStockQuoteYahoo(cleanSymbol);
+    setCache(cacheKey, result);
+    return result;
+  } catch (yahooError) {
+    if (__DEV__) console.warn('Yahoo Finance quote failed, trying Alpha Vantage:', (yahooError as Error).message);
+    // Fallback to Alpha Vantage
+    const result = await getStockQuoteAlphaVantage(cleanSymbol);
+    setCache(cacheKey, result);
+    return result;
+  }
+};
+
+// Get historical daily prices
+export const getStockHistory = async (
+  symbol: string,
+  outputSize: 'compact' | 'full' = 'compact'
+): Promise<PriceData[]> => {
+  const cleanSymbol = sanitizeSymbol(symbol);
+  if (!cleanSymbol) {
+    throw new Error('Invalid symbol');
+  }
+
+  const cacheKey = `stock_history_${cleanSymbol}_${outputSize}`;
+  const cached = getCached<PriceData[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    // Yahoo Finance - get last 2 years for full, 100 days for compact
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - (outputSize === 'full' ? 730 : 100));
+    const result = await getUSStockHistoryYahoo(cleanSymbol, startDate, endDate);
+    setCache(cacheKey, result);
+    return result;
+  } catch (yahooError) {
+    if (__DEV__) console.warn('Yahoo Finance history failed, trying Alpha Vantage:', (yahooError as Error).message);
+    const result = await getStockHistoryAlphaVantage(cleanSymbol, outputSize);
+    setCache(cacheKey, result);
+    return result;
+  }
+};
+
 // Search for stocks
 export const searchStocks = async (keywords: string): Promise<{ symbol: string; name: string }[]> => {
   const cleanKeywords = sanitizeSearchQuery(keywords);
@@ -153,10 +241,25 @@ export const getStockHistoryRange = async (
   startDate: Date,
   endDate: Date
 ): Promise<PriceData[]> => {
-  const allData = await getStockHistory(symbol, 'full');
+  const cleanSymbol = sanitizeSymbol(symbol);
+  if (!cleanSymbol) {
+    throw new Error('Invalid symbol');
+  }
 
-  return allData.filter(item => {
-    const itemDate = new Date(item.date);
-    return itemDate >= startDate && itemDate <= endDate;
-  });
+  const cacheKey = `stock_range_${cleanSymbol}_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}`;
+  const cached = getCached<PriceData[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    // Try Yahoo Finance first (primary)
+    const result = await getUSStockHistoryYahoo(cleanSymbol, startDate, endDate);
+    setCache(cacheKey, result);
+    return result;
+  } catch (yahooError) {
+    if (__DEV__) console.warn('Yahoo Finance range failed, trying Alpha Vantage:', (yahooError as Error).message);
+    // Fallback to Alpha Vantage
+    const result = await getStockHistoryRangeAlphaVantage(cleanSymbol, startDate, endDate);
+    setCache(cacheKey, result);
+    return result;
+  }
 };

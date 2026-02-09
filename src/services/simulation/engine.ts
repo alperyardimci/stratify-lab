@@ -3,6 +3,7 @@ import { calculateSMA, calculateEMA, calculateRSI, calculateAverageVolume, calcu
 import { getStockHistoryRange } from '../api/stocks';
 import { getCryptoHistoryDetailed } from '../api/crypto';
 import { getForexHistory } from '../api/forex';
+import { getBistHistoryRange } from '../api/yahooFinance';
 
 interface SimulationState {
   cash: number;
@@ -130,6 +131,9 @@ export class SimulationEngine {
         break;
       case 'crypto':
         this.priceData = await getCryptoHistoryDetailed(symbol, startDate, endDate);
+        break;
+      case 'bist':
+        this.priceData = await getBistHistoryRange(symbol, startDate, endDate);
         break;
       case 'forex':
       case 'commodity':

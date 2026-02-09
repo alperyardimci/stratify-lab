@@ -49,6 +49,10 @@ export const en = {
     selectCrypto: 'Select crypto...',
     cryptoMultiSelect: 'Crypto (you can select multiple)',
     cryptosSelected: '{count} cryptos selected',
+    bist: 'BIST',
+    selectBist: 'Select BIST stock...',
+    bistMultiSelect: 'BIST Stocks (you can select multiple)',
+    bistsSelected: '{count} BIST stocks selected',
 
     // Investment Details
     investmentDetails: 'Investment Details',
@@ -134,6 +138,13 @@ export const en = {
   // Crypto Picker
   cryptoPicker: {
     title: 'Select Crypto',
+    selected: '{count} selected',
+    clearAll: 'Clear',
+  },
+
+  // BIST Picker
+  bistPicker: {
+    title: 'Select BIST Stock',
     selected: '{count} selected',
     clearAll: 'Clear',
   },

@@ -1,5 +1,5 @@
 // Asset Types
-export type AssetType = 'stock' | 'crypto' | 'forex' | 'commodity';
+export type AssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'bist';
 
 // Price Data
 export interface PriceData {

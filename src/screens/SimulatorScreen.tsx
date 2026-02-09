@@ -14,7 +14,7 @@ import { useStrategyStore, useLanguageStore } from '../store';
 import { theme } from '../constants/theme';
 import { AssetType, UnifiedPortfolioResult, PriceData } from '../types';
 import { SimulationEngine, StrategyOptimizer, OptimizationResult, OptimizationProgress } from '../services/simulation';
-import { POPULAR_STOCKS, POPULAR_CRYPTO, POPULAR_FOREX } from '../constants/api';
+import { POPULAR_STOCKS, POPULAR_CRYPTO, POPULAR_FOREX, POPULAR_BIST30 } from '../constants/api';
 import { Card } from '../components/common';
 import { getEngineLabels, Language } from '../i18n';
 import {
@@ -28,6 +28,7 @@ import {
   TransactionHistory,
   OptimizationModal,
   CryptoPickerModal,
+  BistPickerModal,
 } from '../components/simulator';
 
 // Date period configurations
@@ -79,8 +80,9 @@ export const SimulatorScreen: React.FC = () => {
   const [optimizationResults, setOptimizationResults] = useState<OptimizationResult[] | null>(null);
   const [showOptimizationModal, setShowOptimizationModal] = useState(false);
 
-  // Crypto picker modal
+  // Picker modals
   const [showCryptoPicker, setShowCryptoPicker] = useState(false);
+  const [showBistPicker, setShowBistPicker] = useState(false);
 
   const activeStrategies = getEnabledStrategies();
   const activeBlocks = getActiveBlocks();
@@ -88,6 +90,7 @@ export const SimulatorScreen: React.FC = () => {
   const assetTypeOptions = [
     { value: 'stock', label: t('simulator.stock') },
     { value: 'crypto', label: t('simulator.crypto') },
+    { value: 'bist', label: t('simulator.bist') },
     { value: 'forex', label: t('simulator.forex') },
   ];
 
@@ -99,6 +102,10 @@ export const SimulatorScreen: React.FC = () => {
           .map(s => ({ value: s.symbol, label: `${s.symbol} - ${s.name}` }));
       case 'crypto':
         return POPULAR_CRYPTO.map(c => ({ value: c.id, label: `${c.symbol} - ${c.name}` }));
+      case 'bist':
+        return POPULAR_BIST30
+          .sort((a, b) => a.symbol.localeCompare(b.symbol))
+          .map(b => ({ value: b.symbol, label: `${b.symbol} - ${b.name}` }));
       case 'forex':
         return POPULAR_FOREX
           .sort((a, b) => a.pair.localeCompare(b.pair))
@@ -117,6 +124,15 @@ export const SimulatorScreen: React.FC = () => {
     return t('simulator.cryptosSelected', { count: selectedSymbols.length });
   };
 
+  const getSelectedBistLabel = () => {
+    if (selectedSymbols.length === 0) return t('simulator.selectBist');
+    if (selectedSymbols.length === 1) {
+      const bist = POPULAR_BIST30.find(b => b.symbol === selectedSymbols[0]);
+      return bist ? `${bist.symbol} - ${bist.name}` : t('simulator.selectBist');
+    }
+    return t('simulator.bistsSelected', { count: selectedSymbols.length });
+  };
+
   const toggleCryptoSelection = (id: string) => {
     setSelectedSymbols(prev => {
       if (prev.includes(id)) {
@@ -124,6 +140,39 @@ export const SimulatorScreen: React.FC = () => {
       }
       return [...prev, id];
     });
+  };
+
+  const toggleBistSelection = (symbol: string) => {
+    setSelectedSymbols(prev => {
+      if (prev.includes(symbol)) {
+        return prev.filter(s => s !== symbol);
+      }
+      return [...prev, symbol];
+    });
+  };
+
+  // Resolve asset name from symbol based on asset type
+  const getAssetName = (sym: string): string => {
+    switch (assetType) {
+      case 'crypto': {
+        const crypto = POPULAR_CRYPTO.find(c => c.id === sym);
+        return crypto?.name || sym;
+      }
+      case 'bist': {
+        const bist = POPULAR_BIST30.find(b => b.symbol === sym);
+        return bist?.name || sym;
+      }
+      case 'stock': {
+        const stock = POPULAR_STOCKS.find(s => s.symbol === sym);
+        return stock?.name || sym;
+      }
+      case 'forex': {
+        const forex = POPULAR_FOREX.find(f => f.pair === sym);
+        return forex?.name || sym;
+      }
+      default:
+        return sym;
+    }
   };
 
   const validateInputs = (): boolean => {
@@ -157,14 +206,13 @@ export const SimulatorScreen: React.FC = () => {
         const sym = selectedSymbols[i];
         setLoadingProgress({ current: i + 1, total: selectedSymbols.length });
 
-        const crypto = POPULAR_CRYPTO.find(c => c.id === sym);
         const engineForData = new SimulationEngine(getEngineLabels(language as Language));
         await engineForData.loadHistoricalData(sym, assetType, startDate, endDate);
 
         const priceData = engineForData.getPriceData();
         assets.push({
           symbol: sym,
-          name: crypto?.name || sym,
+          name: getAssetName(sym),
           priceData: priceData,
         });
 
@@ -221,12 +269,12 @@ export const SimulatorScreen: React.FC = () => {
 
         for (let i = 0; i < selectedSymbols.length; i++) {
           const sym = selectedSymbols[i];
-          const crypto = POPULAR_CRYPTO.find(c => c.id === sym);
+          const name = getAssetName(sym);
 
           setOptimizationProgress({
             current: i + 1,
             total: selectedSymbols.length,
-            currentStrategy: t('optimization.loadingData', { name: crypto?.name || sym }),
+            currentStrategy: t('optimization.loadingData', { name }),
             bestSoFar: null,
             profitableCount: 0,
             phase: 'single',
@@ -237,7 +285,7 @@ export const SimulatorScreen: React.FC = () => {
 
           assets.push({
             symbol: sym,
-            name: crypto?.name || sym,
+            name,
             priceData: engineForOpt.getPriceData(),
           });
         }
@@ -307,6 +355,8 @@ export const SimulatorScreen: React.FC = () => {
             getPopularAssets={getPopularAssets}
             getSelectedCryptoLabel={getSelectedCryptoLabel}
             onOpenCryptoPicker={() => setShowCryptoPicker(true)}
+            getSelectedBistLabel={getSelectedBistLabel}
+            onOpenBistPicker={() => setShowBistPicker(true)}
             t={t}
           />
 
@@ -385,6 +435,15 @@ export const SimulatorScreen: React.FC = () => {
         onToggleCrypto={toggleCryptoSelection}
         onClearAll={() => setSelectedSymbols([])}
         onClose={() => setShowCryptoPicker(false)}
+        t={t}
+      />
+
+      <BistPickerModal
+        showBistPicker={showBistPicker}
+        selectedSymbols={selectedSymbols}
+        onToggleBist={toggleBistSelection}
+        onClearAll={() => setSelectedSymbols([])}
+        onClose={() => setShowBistPicker(false)}
         t={t}
       />
     </SafeAreaView>

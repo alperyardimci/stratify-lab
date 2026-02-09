@@ -45,6 +45,11 @@
               "NSExceptionAllowsInsecureHTTPLoads": false,
               "NSExceptionRequiresForwardSecrecy": true,
               "NSIncludesSubdomains": true
+            },
+            "yahoo.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionRequiresForwardSecrecy": true,
+              "NSIncludesSubdomains": true
             }
           }
         },

@@ -8,3 +8,4 @@ export { AssetSummariesList } from './AssetSummariesList';
 export { TransactionHistory } from './TransactionHistory';
 export { OptimizationModal } from './OptimizationModal';
 export { CryptoPickerModal } from './CryptoPickerModal';
+export { BistPickerModal } from './BistPickerModal';

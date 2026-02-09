@@ -12,10 +12,15 @@ const getEnvVar = (key: string, fallback: string = ''): string => {
 };
 
 export const API_CONFIG = {
-  // Alpha Vantage - US Stocks
+  // Alpha Vantage - US Stocks (fallback)
   ALPHA_VANTAGE: {
     BASE_URL: 'https://www.alphavantage.co/query',
     API_KEY: getEnvVar('EXPO_PUBLIC_ALPHA_VANTAGE_API_KEY'),
+  },
+
+  // Yahoo Finance - Stocks & BIST (primary)
+  YAHOO_FINANCE: {
+    BASE_URL: 'https://query1.finance.yahoo.com/v8/finance/chart',
   },
 
   // CoinGecko - Crypto (primary)
@@ -47,6 +52,9 @@ export const RATE_LIMITS = {
     requestsPerMinute: 5,
     requestsPerDay: 500,
   },
+  YAHOO_FINANCE: {
+    requestsPerMinute: 60,
+  },
   COINGECKO: {
     requestsPerMinute: 30, // Conservative limit for free tier
   },
@@ -63,6 +71,7 @@ export const RATE_LIMITS = {
 
 // Popular assets for quick selection
 export const POPULAR_STOCKS = [
+  // Mega Cap Tech
   { symbol: 'AAPL', name: 'Apple Inc.' },
   { symbol: 'MSFT', name: 'Microsoft Corporation' },
   { symbol: 'GOOGL', name: 'Alphabet Inc.' },
@@ -70,7 +79,58 @@ export const POPULAR_STOCKS = [
   { symbol: 'TSLA', name: 'Tesla Inc.' },
   { symbol: 'META', name: 'Meta Platforms Inc.' },
   { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+  // Finance
   { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
+  { symbol: 'V', name: 'Visa Inc.' },
+  { symbol: 'MA', name: 'Mastercard Inc.' },
+  { symbol: 'BAC', name: 'Bank of America Corp.' },
+  { symbol: 'GS', name: 'Goldman Sachs Group' },
+  { symbol: 'MS', name: 'Morgan Stanley' },
+  { symbol: 'WFC', name: 'Wells Fargo & Co.' },
+  // Tech
+  { symbol: 'CRM', name: 'Salesforce Inc.' },
+  { symbol: 'ORCL', name: 'Oracle Corporation' },
+  { symbol: 'ADBE', name: 'Adobe Inc.' },
+  { symbol: 'AMD', name: 'Advanced Micro Devices' },
+  { symbol: 'INTC', name: 'Intel Corporation' },
+  { symbol: 'CSCO', name: 'Cisco Systems' },
+  { symbol: 'QCOM', name: 'Qualcomm Inc.' },
+  { symbol: 'AVGO', name: 'Broadcom Inc.' },
+  { symbol: 'TXN', name: 'Texas Instruments' },
+  { symbol: 'NOW', name: 'ServiceNow Inc.' },
+  { symbol: 'SHOP', name: 'Shopify Inc.' },
+  { symbol: 'SQ', name: 'Block Inc.' },
+  { symbol: 'PLTR', name: 'Palantir Technologies' },
+  { symbol: 'SNOW', name: 'Snowflake Inc.' },
+  { symbol: 'NET', name: 'Cloudflare Inc.' },
+  // Healthcare
+  { symbol: 'JNJ', name: 'Johnson & Johnson' },
+  { symbol: 'UNH', name: 'UnitedHealth Group' },
+  { symbol: 'PFE', name: 'Pfizer Inc.' },
+  { symbol: 'ABBV', name: 'AbbVie Inc.' },
+  { symbol: 'LLY', name: 'Eli Lilly & Co.' },
+  { symbol: 'MRK', name: 'Merck & Co.' },
+  // Consumer
+  { symbol: 'KO', name: 'Coca-Cola Company' },
+  { symbol: 'PEP', name: 'PepsiCo Inc.' },
+  { symbol: 'WMT', name: 'Walmart Inc.' },
+  { symbol: 'COST', name: 'Costco Wholesale' },
+  { symbol: 'MCD', name: "McDonald's Corp." },
+  { symbol: 'NKE', name: 'Nike Inc.' },
+  { symbol: 'SBUX', name: 'Starbucks Corp.' },
+  { symbol: 'DIS', name: 'Walt Disney Co.' },
+  // Industrial & Energy
+  { symbol: 'XOM', name: 'Exxon Mobil Corp.' },
+  { symbol: 'CVX', name: 'Chevron Corporation' },
+  { symbol: 'BA', name: 'Boeing Company' },
+  { symbol: 'CAT', name: 'Caterpillar Inc.' },
+  { symbol: 'GE', name: 'GE Aerospace' },
+  { symbol: 'LMT', name: 'Lockheed Martin' },
+  // Telecom & Media
+  { symbol: 'NFLX', name: 'Netflix Inc.' },
+  { symbol: 'SPOT', name: 'Spotify Technology' },
+  { symbol: 'UBER', name: 'Uber Technologies' },
+  { symbol: 'ABNB', name: 'Airbnb Inc.' },
 ];
 
 // Crypto categories
@@ -196,3 +256,71 @@ export const POPULAR_FOREX = [
   { pair: 'XAU/USD', name: 'Gold / US Dollar' },
   { pair: 'XAG/USD', name: 'Silver / US Dollar' },
 ];
+
+// BIST30 support
+export type BistSector = 'banking' | 'industrial' | 'energy' | 'technology' | 'consumer' | 'holding' | 'transport';
+
+export interface BistAsset {
+  symbol: string;
+  name: string;
+  sector: BistSector;
+}
+
+export const BIST_SECTORS: Record<BistSector, { label: string; icon: string }> = {
+  banking: { label: 'Bankalar', icon: '🏦' },
+  industrial: { label: 'Sanayi', icon: '🏭' },
+  energy: { label: 'Enerji', icon: '⚡' },
+  technology: { label: 'Teknoloji', icon: '💻' },
+  consumer: { label: 'Tüketim', icon: '🛒' },
+  holding: { label: 'Holding', icon: '🏢' },
+  transport: { label: 'Ulaşım', icon: '✈️' },
+};
+
+export const POPULAR_BIST30: BistAsset[] = [
+  // Banking
+  { symbol: 'AKBNK', name: 'Akbank', sector: 'banking' },
+  { symbol: 'GARAN', name: 'Garanti BBVA', sector: 'banking' },
+  { symbol: 'ISCTR', name: 'İş Bankası', sector: 'banking' },
+  { symbol: 'YKBNK', name: 'Yapı Kredi', sector: 'banking' },
+  { symbol: 'HALKB', name: 'Halkbank', sector: 'banking' },
+  { symbol: 'VAKBN', name: 'Vakıfbank', sector: 'banking' },
+  // Industrial
+  { symbol: 'FROTO', name: 'Ford Otosan', sector: 'industrial' },
+  { symbol: 'TOASO', name: 'Tofaş', sector: 'industrial' },
+  { symbol: 'EREGL', name: 'Ereğli Demir Çelik', sector: 'industrial' },
+  { symbol: 'SISE', name: 'Şişecam', sector: 'industrial' },
+  // Energy
+  { symbol: 'TUPRS', name: 'Tüpraş', sector: 'energy' },
+  { symbol: 'PETKM', name: 'Petkim', sector: 'energy' },
+  // Technology
+  { symbol: 'ASELS', name: 'Aselsan', sector: 'technology' },
+  { symbol: 'TCELL', name: 'Turkcell', sector: 'technology' },
+  // Consumer
+  { symbol: 'BIMAS', name: 'BİM Mağazaları', sector: 'consumer' },
+  { symbol: 'MGROS', name: 'Migros', sector: 'consumer' },
+  { symbol: 'ARCLK', name: 'Arçelik', sector: 'consumer' },
+  // Holding
+  { symbol: 'SAHOL', name: 'Sabancı Holding', sector: 'holding' },
+  { symbol: 'KCHOL', name: 'Koç Holding', sector: 'holding' },
+  { symbol: 'TAVHL', name: 'TAV Havalimanları', sector: 'holding' },
+  { symbol: 'EKGYO', name: 'Emlak Konut GYO', sector: 'holding' },
+  // Transport
+  { symbol: 'THYAO', name: 'Türk Hava Yolları', sector: 'transport' },
+  { symbol: 'PGSUS', name: 'Pegasus', sector: 'transport' },
+];
+
+export const getBistBySector = (sector: BistSector): BistAsset[] => {
+  return POPULAR_BIST30
+    .filter(b => b.sector === sector)
+    .sort((a, b) => a.symbol.localeCompare(b.symbol));
+};
+
+export const getGroupedBist = (): { sector: BistSector; label: string; icon: string; stocks: BistAsset[] }[] => {
+  const sectorOrder: BistSector[] = ['banking', 'industrial', 'energy', 'technology', 'consumer', 'holding', 'transport'];
+  return sectorOrder.map(sec => ({
+    sector: sec,
+    label: BIST_SECTORS[sec].label,
+    icon: BIST_SECTORS[sec].icon,
+    stocks: getBistBySector(sec),
+  }));
+};
